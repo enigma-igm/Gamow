@@ -131,72 +131,92 @@ def get_delta_wave(wave, gpm, frac_spec_med_filter=0.03):
 
 
 # For reference convert the fluxes to AB magnitude
-
 f_nu = np.array([1.0,5.0, 10.0, 20.0, 50.0])*u.microjansky
-
 f_AB = f_nu.to('mag(AB)')
 
 # Flamingos 2 with the 4-pixel slit (0.72") has R = 450. Spectrograph has 167 km/s pixels.
 
-# GMOS with a 1.0" slit (6.2 pixels) has R=2200 and 24 km/s pixels when binned by 2 spectrally.
+# GMOS R831/757 a 1.0" slit (6.2 pixels) has R=2200,  and 24 km/s pixels when binned by 2 spectrally.
 
-# NIRES has as 0.55" slit (3.7 pixels) and 39 km/s pixels
+# NIRES has as 0.55" slit (3.7 pixels) and R=2700, and 39 km/s pixels
 
-# GNIRS with the 1.0" (6.7 pixels) slit has R = 510. Spectrograph has 88 km/s pixels
+# LRIS-R 600/10000 with lam_cen = 8660 covers 7022.5-10297.5 and has R = 1840. Binned 2x2 with with a 1.0" slit (3.7 spatial pixels)
+# it has 55 km/s pixels
 
+
+# DID NOT USE GNIRS, since FLAMINGOS-2 is faster: GNIRS with the 1.0" (6.7 pixels) slit has R = 510. Spectrograph has 88 km/s pixels
 
 
 # exptime = 120*300 = 36,000s
 
-
-
-# To convert FLAMINGOS-2 S/N to NIRES, divide SNR by sqrt(167/39) = 2
+# NIRES will be roughly comparable to FLAMINGOS-2
 
 # GMOS will be roughly comparalbe to Keck LRIS
 
 
-z = 7.0
-R = 3000
-t_exp = 10.0
-f_nu_J = 10.0
-#def snr_gamow(z, f_nu_J, t_exp, R):
+def snr_gamow(z, f_nu_J, t_exp, R):
+    """
+
+    Args:
+        z (float):
+           redshift of GRB
+        f_nu_J (float):
+           J-band flux to normalize f_lam \propto lambda^-1 SED in muJy
+        t_exp (float):
+           Exposure time in hrs
+        R (float):
+           Resolution. Code computes the S/N per resolution element (not per pixel!)
 
 
-t_exp_ref = 10.0 # units hr
-f_nu_J_ref = 10.0 # units of uJy, in J-band observed frame
-file_gmos_7100 = os.path.join('data', 'GMOS_N_831_7100_10hr_SNR.txt')
-data = np.loadtxt(file_gmos_7100)
-lam_gmos_7100, snr_gmos_7100 = 10*data[:,0], data[:,1]
-dlam_gmos_7100 = get_delta_wave(lam_gmos_7100, np.ones_like(lam_gmos_7100,dtype=bool))
-Rlam_gmos_7100 = lam_gmos_7100/dlam_gmos_7100
+    Returns:
+        plot of S/N per R as a function of wavelength
 
-file_gmos_9300 = os.path.join('data', 'GMOS_N_831_9300_10hr_SNR.txt')
-data = np.loadtxt(file_gmos_9300)
-lam_gmos_9300, snr_gmos_9300 = 10*data[:,0], data[:,1]
-dlam_gmos_9300 = get_delta_wave(lam_gmos_9300, np.ones_like(lam_gmos_9300,dtype=bool))
-Rlam_gmos_9300 = lam_gmos_9300/dlam_gmos_9300
-
-file_flamingos2_JH = os.path.join('data', 'FLAMINGOS_2_JH_10hr_SNR.txt')
-data = np.loadtxt(file_flamingos2_JH)
-lam_flamingos2_JH, snr_flamginso2_JH = 10*data[:, 0], data[:, 1]
-dlam_flamingos2_JH = get_delta_wave(lam_flamingos2_JH, np.ones_like(lam_flamingos2_JH,dtype=bool))
-Rlam_flamingos2_JH = lam_flamingos2_JH/dlam_flamingos2_JH
-
-# This assumes you are background limited, i.e. objects much fainter than sky. In this regime scales roughly as
-# SNR = f_nu_J/f_nu_J_ref*SNR_ref*sqrt(t_exp/t_exp_ref)*sqrt(R_itc/R)
-snr_gamow_gmos_7100 = np.sqrt(Rlam_gmos_7100/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_gmos_7100
-snr_gamow_gmos_9300 = np.sqrt(Rlam_gmos_9300/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_gmos_9300
-snr_gamow_flamingos2_JH = np.sqrt(Rlam_flamingos2_JH/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_flamginso2_JH
+    """
 
 
-plt.plot(lam_gmos_7100,snr_gamow_gmos_7100,color='blue', label='GMOS-7100', alpha=0.7)
-plt.plot(lam_gmos_9300,snr_gamow_gmos_9300,color='green', label='GMOS-9300', alpha=0.7)
-plt.plot(lam_flamingos2_JH,snr_flamginso2_JH,color='red', label='FLAMINGOS-2-JH', alpha=0.7)
-plt.axvline((1.0 + z)*1215.67, linestyle='--', color='black', label=r'$(1 +z_{{GRB}})*1216{{\rm \AA}}$')
-plt.legend()
-plt.ylabel('S/N per R')
-plt.xlabel('Wavelength  ' +  r'[${{\AA}}$]')
-plt.show()
+    t_exp_ref = 10.0 # units hr
+    f_nu_J_ref = 10.0 # units of uJy, in J-band observed frame
+    file_gmos_7100 = os.path.join('data', 'GMOS_N_831_7100_10hr_SNR.txt')
+    data = np.loadtxt(file_gmos_7100)
+    lam_gmos_7100, snr_gmos_7100 = 10*data[:,0], data[:,1]
+    dlam_gmos_7100 = get_delta_wave(lam_gmos_7100, np.ones_like(lam_gmos_7100,dtype=bool))
+    Rlam_gmos_7100 = lam_gmos_7100/dlam_gmos_7100
+
+    file_gmos_9300 = os.path.join('data', 'GMOS_N_831_9300_10hr_SNR.txt')
+    data = np.loadtxt(file_gmos_9300)
+    lam_gmos_9300, snr_gmos_9300 = 10*data[:,0], data[:,1]
+    dlam_gmos_9300 = get_delta_wave(lam_gmos_9300, np.ones_like(lam_gmos_9300,dtype=bool))
+    Rlam_gmos_9300 = lam_gmos_9300/dlam_gmos_9300
+
+    file_flamingos2_JH = os.path.join('data', 'FLAMINGOS_2_JH_10hr_SNR.txt')
+    data = np.loadtxt(file_flamingos2_JH)
+    lam_flamingos2_JH, snr_flamginso2_JH = 10*data[:, 0], data[:, 1]
+    dlam_flamingos2_JH = get_delta_wave(lam_flamingos2_JH, np.ones_like(lam_flamingos2_JH,dtype=bool))
+    Rlam_flamingos2_JH = lam_flamingos2_JH/dlam_flamingos2_JH
+
+    # This assumes you are background limited, i.e. objects much fainter than sky. In this regime scales roughly as
+    # SNR = f_nu_J/f_nu_J_ref*SNR_ref*sqrt(t_exp/t_exp_ref)*sqrt(R_itc/R)
+    snr_gamow_gmos_7100 = np.sqrt(Rlam_gmos_7100/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_gmos_7100
+    snr_gamow_gmos_9300 = np.sqrt(Rlam_gmos_9300/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_gmos_9300
+    snr_gamow_flamingos2_JH = np.sqrt(Rlam_flamingos2_JH/R)*np.sqrt(t_exp/t_exp_ref)*(f_nu_J/f_nu_J_ref)*snr_flamginso2_JH
+
+    plt.plot(lam_gmos_7100,snr_gamow_gmos_7100,color='blue', label='GMOS-7100', alpha=0.7)
+    plt.plot(lam_gmos_9300,snr_gamow_gmos_9300,color='green', label='GMOS-9300', alpha=0.7)
+    plt.plot(lam_flamingos2_JH,snr_gamow_flamingos2_JH,color='red', label='FLAMINGOS-2-JH', alpha=0.7)
+    plt.axvline((1.0 + z)*1215.67, linestyle='--', color='black', label=r'$(1 +z_{{GRB}})*1216{{\rm \AA}}$')
+    plt.legend()
+    plt.ylabel('S/N per R')
+    plt.xlabel('Wavelength  ' +  r'[${{\AA}}$]')
+    plt.show()
 
 
+
+
+
+z = 7.0 # redshift
+t_exp = 10.0 # exposure time in hrs
+f_nu_J = 10.0 # flux in muJy
+R = 3000 # resolution, i.e. code returns S/N per resolution element (not per pixel!)
+
+snr_gamow(z,f_nu_J,t_exp,R)
 
